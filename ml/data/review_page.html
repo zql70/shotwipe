@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ShotWipe 复核台</title>
+<style>
+  :root {
+    --bg: #f4f7f6;
+    --panel: #ffffff;
+    --ink: #172522;
+    --muted: #6b7b77;
+    --line: #dce6e2;
+    --teal: #0f7b6c;
+    --teal-soft: #e4f2ee;
+    --sp: #0f7b6c;
+    --sp-soft: #e4f2ee;
+    --ot: #4b6470;
+    --ot-soft: #e8eef1;
+    --ss: #6b4fa1;
+    --ss-soft: #efeaf8;
+    --ig: #9a6b16;
+    --ig-soft: #faf0db;
+    --danger: #b3261e;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+    font-size: 14px;
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(244,247,246,.96);
+    border-bottom: 1px solid var(--line);
+    padding: 12px 18px 10px;
+    backdrop-filter: blur(8px);
+  }
+  .topline { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .brand { font-size: 18px; font-weight: 700; letter-spacing: .2px; }
+  .brand small { color: var(--muted); font-size: 12px; font-weight: 400; margin-left: 8px; }
+  .grow { flex: 1; }
+  .progress-wrap { flex: 1 1 260px; min-width: 200px; }
+  .progress-track { height: 8px; border-radius: 999px; background: #dbe7e3; overflow: hidden; }
+  .progress-bar { height: 100%; width: 0; background: var(--teal); transition: width .25s ease; }
+  .progress-text { margin-top: 4px; color: var(--muted); font-size: 12px; }
+  .actions { display: flex; align-items: center; gap: 12px; }
+  .actions a {
+    color: var(--teal); text-decoration: none; font-weight: 600;
+    border: 1px solid #bfd8d2; padding: 6px 10px; border-radius: 8px;
+  }
+  .actions a:hover { background: var(--teal-soft); }
+  #saveStatus { color: var(--muted); font-size: 12px; min-width: 64px; text-align: right; }
+  #saveStatus.error { color: var(--danger); font-weight: 600; }
+  nav {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tab {
+    border: 1px solid var(--line); background: var(--panel); color: var(--ink);
+    border-radius: 999px; padding: 7px 12px; cursor: pointer; font-weight: 600;
+  }
+  .tab:hover { border-color: #b9d3cc; }
+  .tab.active { background: var(--teal); color: #fff; border-color: var(--teal); }
+  .tab .count { font-weight: 400; opacity: .8; margin-left: 4px; }
+  select, input[type="text"] {
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 8px; padding: 7px 10px; font: inherit;
+  }
+  .hint { color: var(--muted); font-size: 12px; line-height: 1.5; }
+  .legend { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+  .legend i { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 4px; }
+  main { padding: 16px 18px 80px; }
+  #grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr));
+    gap: 12px; align-items: start;
+  }
+  .card {
+    position: relative;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    overflow: hidden; display: flex; flex-direction: column;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .card:hover { border-color: #b6cfc8; box-shadow: 0 4px 16px rgba(16, 60, 52, .08); }
+  .card.selected { border-color: var(--teal); box-shadow: 0 0 0 3px rgba(15,123,108,.16); }
+  .thumb { position: relative; aspect-ratio: 1 / 1; background: #e7eeec; cursor: zoom-in; overflow: hidden; }
+  .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+  .thumb.broken::after {
+    content: "无法预览"; position: absolute; inset: 0; display: grid; place-items: center;
+    color: var(--muted); font-size: 12px;
+  }
+  .badges { position: absolute; top: 6px; left: 6px; display: flex; gap: 4px; }
+  .badge {
+    background: rgba(10, 28, 24, .72); color: #fff; border-radius: 6px;
+    padding: 2px 6px; font-size: 11px; font-weight: 600;
+  }
+  .badge.auto { background: rgba(255,255,255,.88); color: var(--ink); font-weight: 500; }
+  .open {
+    position: absolute; right: 6px; top: 6px; border: 0; border-radius: 6px;
+    background: rgba(10,28,24,.65); color: #fff; padding: 3px 6px; cursor: pointer;
+    font-size: 12px;
+  }
+  .info { padding: 8px 9px 4px; }
+  .date { font-weight: 600; font-size: 12px; }
+  .auto { color: var(--muted); font-size: 11px; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .labels { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; padding: 6px 9px 10px; }
+  .label-btn {
+    border: 1px solid var(--line); background: #fff; border-radius: 7px;
+    padding: 5px 4px; font: inherit; font-size: 12px; cursor: pointer; color: var(--ink);
+  }
+  .label-btn:hover { border-color: #b6cfc8; }
+  .label-btn.sp.active { background: var(--sp-soft); border-color: var(--sp); color: var(--sp); font-weight: 700; }
+  .label-btn.ot.active { background: var(--ot-soft); border-color: var(--ot); color: var(--ot); font-weight: 700; }
+  .label-btn.ss.active { background: var(--ss-soft); border-color: var(--ss); color: var(--ss); font-weight: 700; }
+  .label-btn.ig.active { background: var(--ig-soft); border-color: var(--ig); color: var(--ig); font-weight: 700; }
+  .notes-dot {
+    display: none; width: 7px; height: 7px; border-radius: 50%;
+    background: var(--ig); margin-left: 5px; vertical-align: middle;
+  }
+  .notes-dot.on { display: inline-block; }
+  .empty {
+    grid-column: 1 / -1; text-align: center; color: var(--muted);
+    padding: 60px 10px; border: 1px dashed var(--line); border-radius: 12px;
+  }
+  #modal {
+    position: fixed; inset: 0; z-index: 50; display: none;
+    background: rgba(9, 20, 17, .62); align-items: center; justify-content: center;
+    padding: 18px;
+  }
+  #modal.open { display: flex; }
+  .modal-panel {
+    width: min(980px, 96vw); max-height: 94vh; background: #fff; border-radius: 14px;
+    overflow: hidden; display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+  }
+  .modal-image { background: #101816; display: grid; place-items: center; min-height: 240px; }
+  .modal-image img { max-width: 100%; max-height: 88vh; object-fit: contain; display: block; }
+  .modal-side { padding: 16px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
+  .modal-side h3 { margin: 0; font-size: 16px; }
+  .modal-meta { color: var(--muted); font-size: 12px; line-height: 1.6; word-break: break-all; }
+  .modal-labels { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .modal-labels .label-btn { padding: 8px 6px; }
+  textarea {
+    width: 100%; min-height: 90px; resize: vertical; border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px; font: inherit;
+  }
+  .modal-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .modal-actions button {
+    border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 7px 10px;
+    font: inherit; cursor: pointer;
+  }
+  .modal-actions button:hover { border-color: #b6cfc8; }
+  .modal-actions .primary { background: var(--teal); border-color: var(--teal); color: #fff; }
+  .modal-actions .ghost { margin-left: auto; }
+  @media (max-width: 760px) {
+    .modal-panel { grid-template-columns: 1fr; }
+    .modal-image img { max-height: 50vh; }
+    #grid { grid-template-columns: repeat(auto-fill, minmax(155px, 1fr)); gap: 8px; }
+    .labels { grid-template-columns: 1fr 1fr; }
+    main { padding: 10px 10px 70px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="topline">
+    <div class="brand">ShotWipe 复核台 <small>本地标注 · 不上传</small></div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-bar" id="bar"></div></div>
+      <div class="progress-text" id="progressText">加载中…</div>
+    </div>
+    <div class="actions">
+      <a href="/export" title="导出带人工标签的 CSV">导出 CSV</a>
+      <span id="saveStatus">本地保存</span>
+    </div>
+  </div>
+  <nav>
+    <div class="tabs" id="tabs"></div>
+    <select id="filter" title="筛选">
+      <option value="all">全部</option>
+      <option value="unlabeled">只看未标</option>
+      <option value="screen_photo">屏摄</option>
+      <option value="other">普通</option>
+      <option value="screenshot">截图</option>
+      <option value="ignore">忽略</option>
+    </select>
+    <span class="hint" id="visibleText"></span>
+    <span class="grow"></span>
+    <div class="legend">
+      <span><i style="background:var(--sp)"></i>屏摄</span>
+      <span><i style="background:var(--ot)"></i>普通</span>
+      <span><i style="background:var(--ss)"></i>截图</span>
+      <span><i style="background:var(--ig)"></i>忽略</span>
+    </div>
+  </nav>
+  <div class="hint" style="margin-top:6px">
+    点击卡片选中 · 数字键 1/2/3/4 标注 · U 取消 · 方向键切换 · Enter 看大图 · 点缩略图直接看大图
+  </div>
+</header>
+
+<main>
+  <div id="grid"></div>
+</main>
+
+<div id="modal" aria-hidden="true">
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-label="图片详情">
+    <div class="modal-image"><img id="modalImg" alt=""></div>
+    <div class="modal-side">
+      <h3 id="modalTitle">—</h3>
+      <div class="modal-meta" id="modalMeta"></div>
+      <div class="modal-labels" id="modalLabels"></div>
+      <textarea id="notes" placeholder="备注（可选）：例如“屏幕是关的”“打印海报”"></textarea>
+      <div class="modal-actions">
+        <button id="prevBtn">← 上一张</button>
+        <button id="nextBtn">下一张 →</button>
+        <button id="clearBtn">清除标签</button>
+        <button id="closeBtn" class="primary ghost">关闭 (Esc)</button>
+      </div>
+      <div class="hint" id="modalHint"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const LABELS = [
+  { key: "screen_photo", name: "屏摄", cls: "sp" },
+  { key: "other", name: "普通", cls: "ot" },
+  { key: "screenshot", name: "截图", cls: "ss" },
+  { key: "ignore", name: "忽略", cls: "ig" },
+];
+const LABEL_KEYS = LABELS.map((x) => x.key);
+const LABEL_MAP = Object.fromEntries(LABELS.map((x) => [x.key, x]));
+
+const state = {
+  lists: {},
+  labels: {},
+  tab: "candidates",
+  filter: "all",
+  selected: null,
+  modalPath: null,
+  notesTimer: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const grid = $("grid");
+const tabsEl = $("tabs");
+const filterEl = $("filter");
+const modal = $("modal");
+const modalImg = $("modalImg");
+const modalTitle = $("modalTitle");
+const modalMeta = $("modalMeta");
+const modalLabels = $("modalLabels");
+const notesEl = $("notes");
+
+function thumbUrl(path) { return "/thumb?path=" + encodeURIComponent(path); }
+function imageUrl(path) { return "/image?path=" + encodeURIComponent(path); }
+function fmtScore(v) {
+  if (v === undefined || v === null || v === "") return "";
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toFixed(2) : String(v);
+}
+function currentItems() {
+  const items = state.lists[state.tab] || [];
+  if (state.filter === "all") return items;
+  if (state.filter === "unlabeled") return items.filter((i) => !isLabeled(i.path));
+  return items.filter((i) => (state.labels[i.path] || {}).label === state.filter);
+}
+function isLabeled(path) {
+  const label = (state.labels[path] || {}).label;
+  return !!LABEL_MAP[label];
+}
+function setStatus(text, error = false) {
+  const el = $("saveStatus");
+  el.textContent = text;
+  el.classList.toggle("error", error);
+  if (!error) {
+    clearTimeout(window.__statusTimer);
+    window.__statusTimer = setTimeout(() => { el.textContent = "本地保存"; }, 1800);
+  }
+}
+async function saveEntry(path) {
+  const entry = state.labels[path] || { label: "", notes: "" };
+  setStatus("保存中…");
+  try {
+    const res = await fetch("/api/labels", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ path, label: entry.label || "", notes: entry.notes || "" }),
+    });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    setStatus("已保存");
+  } catch (err) {
+    setStatus("保存失败，请检查服务", true);
+  }
+}
+
+function renderTabs() {
+  tabsEl.innerHTML = "";
+  const names = { candidates: "屏摄候选", low: "低分漏检", screenshots: "截图抽检", mid: "中分段" };
+  for (const key of Object.keys(state.lists)) {
+    const items = state.lists[key];
+    const labeled = items.filter((i) => isLabeled(i.path)).length;
+    const btn = document.createElement("button");
+    btn.className = "tab" + (state.tab === key ? " active" : "");
+    btn.innerHTML = `${names[key] || key}<span class="count">${labeled}/${items.length}</span>`;
+    btn.onclick = () => {
+      state.tab = key;
+      state.selected = null;
+      renderTabs();
+      renderGrid();
+    };
+    tabsEl.appendChild(btn);
+  }
+}
+
+function updateProgress() {
+  const all = Object.values(state.lists).flat();
+  const labeled = all.filter((i) => isLabeled(i.path)).length;
+  const pct = all.length ? (labeled / all.length) * 100 : 0;
+  $("bar").style.width = pct.toFixed(1) + "%";
+  $("progressText").textContent = `已标 ${labeled} / ${all.length}（${pct.toFixed(0)}%）`;
+  $("visibleText").textContent = `当前筛选 ${currentItems().length} 张`;
+}
+
+function applyCardState(card, item) {
+  const entry = state.labels[item.path] || {};
+  for (const key of LABEL_KEYS) {
+    const btn = card.querySelector(`.label-btn[data-label="${key}"]`);
+    if (btn) btn.classList.toggle("active", entry.label === key);
+  }
+  const dot = card.querySelector(".notes-dot");
+  if (dot) dot.classList.toggle("on", !!(entry.notes && entry.notes.trim()));
+}
+
+function updateCard(path) {
+  const card = grid.querySelector(`.card[data-path="${CSS.escape(path)}"]`);
+  if (!card) return;
+  const item = (state.lists[state.tab] || []).find((i) => i.path === path);
+  if (item) applyCardState(card, item);
+  if (state.filter !== "all") {
+    const stillVisible = currentItems().some((i) => i.path === path);
+    if (!stillVisible) card.remove();
+    if (!grid.querySelector(".card")) renderGrid();
+  }
+  updateProgress();
+  renderTabs();
+}
+
+function buildCard(item) {
+  const card = document.createElement("article");
+  card.className = "card";
+  card.dataset.path = item.path;
+  card.tabIndex = 0;
+
+  const thumb = document.createElement("div");
+  thumb.className = "thumb";
+  const img = document.createElement("img");
+  img.loading = "lazy";
+  img.src = thumbUrl(item.path);
+  img.alt = "";
+  img.onerror = () => { thumb.classList.add("broken"); img.remove(); };
+  thumb.appendChild(img);
+
+  const badges = document.createElement("div");
+  badges.className = "badges";
+  if (item.score !== "") {
+    const score = document.createElement("span");
+    score.className = "badge";
+    score.textContent = fmtScore(item.score);
+    score.title = "TinyCLIP 屏摄分数";
+    badges.appendChild(score);
+  }
+  const auto = document.createElement("span");
+  auto.className = "badge auto";
+  auto.textContent = item.auto_label === "screenshot" ? "截图" : "照片";
+  badges.appendChild(auto);
+  thumb.appendChild(badges);
+
+  const open = document.createElement("button");
+  open.className = "open";
+  open.textContent = "大图";
+  open.title = "打开大图";
+  open.onclick = (e) => { e.stopPropagation(); openModal(item.path); };
+  thumb.appendChild(open);
+
+  thumb.onclick = (e) => { e.stopPropagation(); openModal(item.path); };
+  card.onclick = () => selectPath(item.path);
+
+  const info = document.createElement("div");
+  info.className = "info";
+  const date = document.createElement("div");
+  date.className = "date";
+  date.textContent = (item.taken_at || "").slice(0, 10) || "未知日期";
+  const dot = document.createElement("span");
+  dot.className = "notes-dot";
+  dot.title = "有备注";
+  date.appendChild(dot);
+  const sub = document.createElement("div");
+  sub.className = "auto";
+  const notes = (state.labels[item.path] || {}).notes || "";
+  sub.textContent = item.path + (notes ? " · " + notes : "");
+  sub.title = item.path;
+  info.appendChild(date);
+  info.appendChild(sub);
+
+  const labels = document.createElement("div");
+  labels.className = "labels";
+  for (const meta of LABELS) {
+    const btn = document.createElement("button");
+    btn.className = "label-btn " + meta.cls;
+    btn.dataset.label = meta.key;
+    btn.textContent = meta.name;
+    btn.onclick = (e) => { e.stopPropagation(); setLabel(item.path, meta.key); };
+    labels.appendChild(btn);
+  }
+  card.appendChild(thumb);
+  card.appendChild(info);
+  card.appendChild(labels);
+  applyCardState(card, item);
+  if (state.selected === item.path) card.classList.add("selected");
+  return card;
+}
+
+function renderGrid() {
+  grid.innerHTML = "";
+  const items = currentItems();
+  if (!items.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = state.filter === "unlabeled" ? "这个列表已经全部标完了 🎉" : "没有符合条件的图片";
+    grid.appendChild(empty);
+    updateProgress();
+    return;
+  }
+  const frag = document.createDocumentFragment();
+  for (const item of items) frag.appendChild(buildCard(item));
+  grid.appendChild(frag);
+  updateProgress();
+}
+
+function selectPath(path) {
+  state.selected = path;
+  for (const card of grid.querySelectorAll(".card")) {
+    card.classList.toggle("selected", card.dataset.path === path);
+  }
+  const card = grid.querySelector(`.card[data-path="${CSS.escape(path)}"]`);
+  if (card) card.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function setLabel(path, label) {
+  const entry = state.labels[path] || { label: "", notes: "" };
+  entry.label = label;
+  entry.updated_at = new Date().toISOString();
+  state.labels[path] = entry;
+  state.selected = path;
+  updateCard(path);
+  saveEntry(path);
+}
+
+function clearLabel(path) {
+  const entry = state.labels[path] || { label: "", notes: "" };
+  entry.label = "";
+  entry.updated_at = new Date().toISOString();
+  state.labels[path] = entry;
+  updateCard(path);
+  saveEntry(path);
+}
+
+function openModal(path) {
+  state.modalPath = path;
+  state.selected = path;
+  const item = Object.values(state.lists).flat().find((i) => i.path === path) || { path };
+  modalImg.src = imageUrl(path);
+  modalTitle.textContent = (item.taken_at || "").slice(0, 10) || "未知日期";
+  const score = item.score !== undefined && item.score !== "" ? `屏摄分数 ${fmtScore(item.score)} · ` : "";
+  modalMeta.textContent = `${score}自动标签 ${item.auto_label || "—"}\n${item.path}`;
+  notesEl.value = (state.labels[path] || {}).notes || "";
+  renderModalLabels(path);
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  selectPath(path);
+}
+
+function renderModalLabels(path) {
+  modalLabels.innerHTML = "";
+  const current = (state.labels[path] || {}).label;
+  for (const meta of LABELS) {
+    const btn = document.createElement("button");
+    btn.className = "label-btn " + meta.cls + (current === meta.key ? " active" : "");
+    btn.textContent = meta.name;
+    btn.onclick = () => { setLabel(path, meta.key); renderModalLabels(path); };
+    modalLabels.appendChild(btn);
+  }
+  const hint = $("modalHint");
+  hint.textContent = current ? `已标：${LABEL_MAP[current].name}` : "尚未标注";
+}
+
+function closeModal() {
+  clearTimeout(state.notesTimer);
+  if (state.modalPath) saveEntry(state.modalPath);
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  const path = state.modalPath;
+  state.modalPath = null;
+  if (path) updateCard(path);
+}
+
+function moveSelection(delta) {
+  const items = currentItems();
+  if (!items.length) return;
+  let index = items.findIndex((i) => i.path === state.selected);
+  if (index < 0) index = 0;
+  else index = Math.min(items.length - 1, Math.max(0, index + delta));
+  selectPath(items[index].path);
+}
+
+function modalStep(delta) {
+  const items = currentItems();
+  if (!items.length) return;
+  let index = items.findIndex((i) => i.path === state.modalPath);
+  if (index < 0) index = 0;
+  index = Math.min(items.length - 1, Math.max(0, index + delta));
+  openModal(items[index].path);
+}
+
+notesEl.addEventListener("input", () => {
+  clearTimeout(state.notesTimer);
+  const path = state.modalPath;
+  if (!path) return;
+  const entry = state.labels[path] || { label: "", notes: "" };
+  entry.notes = notesEl.value;
+  state.labels[path] = entry;
+  state.notesTimer = setTimeout(() => saveEntry(path), 600);
+});
+
+$("prevBtn").onclick = () => modalStep(-1);
+$("nextBtn").onclick = () => modalStep(1);
+$("clearBtn").onclick = () => {
+  if (state.modalPath) { clearLabel(state.modalPath); renderModalLabels(state.modalPath); }
+};
+$("closeBtn").onclick = closeModal;
+modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
+
+filterEl.onchange = () => {
+  state.filter = filterEl.value;
+  renderGrid();
+};
+
+document.addEventListener("keydown", (e) => {
+  if (modal.classList.contains("open") && e.key === "Escape") {
+    e.preventDefault();
+    closeModal();
+    return;
+  }
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || tag === "select") return;
+  if (modal.classList.contains("open")) {
+    if (e.key === "ArrowLeft") { e.preventDefault(); modalStep(-1); return; }
+    if (e.key === "ArrowRight") { e.preventDefault(); modalStep(1); return; }
+    const idx = ["1", "2", "3", "4"].indexOf(e.key);
+    if (idx >= 0 && state.modalPath) {
+      setLabel(state.modalPath, LABEL_KEYS[idx]);
+      renderModalLabels(state.modalPath);
+    }
+    return;
+  }
+  if (e.key === "Escape") return;
+  const idx = ["1", "2", "3", "4"].indexOf(e.key);
+  if (idx >= 0) {
+    e.preventDefault();
+    if (!state.selected) { const items = currentItems(); if (items.length) selectPath(items[0].path); }
+    if (state.selected) setLabel(state.selected, LABEL_KEYS[idx]);
+    return;
+  }
+  if (e.key === "u" || e.key === "U" || e.key === "Backspace") {
+    e.preventDefault();
+    if (state.selected) clearLabel(state.selected);
+    return;
+  }
+  if (e.key === "ArrowLeft") { e.preventDefault(); moveSelection(-1); }
+  if (e.key === "ArrowRight") { e.preventDefault(); moveSelection(1); }
+  if (e.key === "ArrowUp") { e.preventDefault(); moveSelection(-4); }
+  if (e.key === "ArrowDown") { e.preventDefault(); moveSelection(4); }
+  if (e.key === "Enter" && state.selected) { e.preventDefault(); openModal(state.selected); }
+});
+
+async function init() {
+  try {
+    const res = await fetch("/api/items");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const data = await res.json();
+    state.lists = data.lists || {};
+    state.labels = data.labels || {};
+    if (!state.lists.candidates || !state.lists.candidates.length) {
+      state.tab = Object.keys(state.lists)[0] || "candidates";
+    }
+    renderTabs();
+    renderGrid();
+  } catch (err) {
+    grid.innerHTML = `<div class="empty">加载失败：${err.message}<br>请确认 review_server.py 正在运行。</div>`;
+    $("progressText").textContent = "加载失败";
+  }
+}
+
+init();
+</script>
+</body>
+</html>

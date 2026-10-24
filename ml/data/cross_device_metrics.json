@@ -1,0 +1,299 @@
+{
+  "v2": {
+    "thresholds": {
+      "iphone_cal": {
+        "threshold": 0.3928000032901764,
+        "tp": 64,
+        "fp": 2,
+        "fn": 12,
+        "tn": 123,
+        "precision": 0.9696969696969697,
+        "recall": 0.8421052631578947,
+        "other_false_positive_rate": 0.022727272727272728
+      },
+      "android_cal": {
+        "threshold": 0.8867999911308289,
+        "tp": 2,
+        "fp": 0,
+        "fn": 5,
+        "tn": 119,
+        "precision": 1.0,
+        "recall": 0.2857142857142857,
+        "other_false_positive_rate": 0.0
+      },
+      "combined_cal": {
+        "threshold": 0.8295999765396118,
+        "tp": 44,
+        "fp": 2,
+        "fn": 39,
+        "tn": 242,
+        "precision": 0.9565217391304348,
+        "recall": 0.5301204819277109,
+        "other_false_positive_rate": 0.010416666666666666
+      },
+      "app_0.65": {
+        "threshold": 0.65,
+        "tp": 105,
+        "fp": 6,
+        "fn": 37,
+        "tn": 352,
+        "precision": 0.9459459459459459,
+        "recall": 0.7394366197183099,
+        "other_false_positive_rate": 0.02142857142857143
+      }
+    },
+    "iphone_test_at_iphone_threshold": {
+      "threshold": 0.3928000032901764,
+      "tp": 123,
+      "fp": 16,
+      "fn": 19,
+      "tn": 342,
+      "precision": 0.8848920863309353,
+      "recall": 0.8661971830985915,
+      "other_false_positive_rate": 0.05357142857142857,
+      "screenshot_accuracy": 0.9230769230769231
+    },
+    "iphone_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 105,
+      "fp": 6,
+      "fn": 37,
+      "tn": 352,
+      "precision": 0.9459459459459459,
+      "recall": 0.7394366197183099,
+      "other_false_positive_rate": 0.02142857142857143,
+      "screenshot_accuracy": 0.9230769230769231
+    },
+    "android_test_at_android_threshold": {
+      "threshold": 0.8867999911308289,
+      "tp": 5,
+      "fp": 0,
+      "fn": 21,
+      "tn": 302,
+      "precision": 1.0,
+      "recall": 0.19230769230769232,
+      "other_false_positive_rate": 0.0,
+      "screenshot_accuracy": 0.8333333333333334
+    },
+    "android_test_at_combined_threshold": {
+      "threshold": 0.8295999765396118,
+      "tp": 9,
+      "fp": 2,
+      "fn": 17,
+      "tn": 300,
+      "precision": 0.8181818181818182,
+      "recall": 0.34615384615384615,
+      "other_false_positive_rate": 0.007874015748031496,
+      "screenshot_accuracy": 0.8333333333333334
+    },
+    "android_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 18,
+      "fp": 6,
+      "fn": 8,
+      "tn": 296,
+      "precision": 0.75,
+      "recall": 0.6923076923076923,
+      "other_false_positive_rate": 0.023622047244094488,
+      "screenshot_accuracy": 0.8333333333333334
+    }
+  },
+  "v21": {
+    "thresholds": {
+      "iphone_cal": {
+        "threshold": 0.18619999289512634,
+        "tp": 63,
+        "fp": 2,
+        "fn": 13,
+        "tn": 123,
+        "precision": 0.9692307692307692,
+        "recall": 0.8289473684210527,
+        "other_false_positive_rate": 0.022727272727272728
+      },
+      "android_cal": {
+        "threshold": 0.8870000243186951,
+        "tp": 4,
+        "fp": 0,
+        "fn": 3,
+        "tn": 119,
+        "precision": 1.0,
+        "recall": 0.5714285714285714,
+        "other_false_positive_rate": 0.0
+      },
+      "combined_cal": {
+        "threshold": 0.8263999819755554,
+        "tp": 38,
+        "fp": 2,
+        "fn": 45,
+        "tn": 242,
+        "precision": 0.95,
+        "recall": 0.4578313253012048,
+        "other_false_positive_rate": 0.010416666666666666
+      },
+      "app_0.65": {
+        "threshold": 0.65,
+        "tp": 92,
+        "fp": 9,
+        "fn": 50,
+        "tn": 349,
+        "precision": 0.9108910891089109,
+        "recall": 0.647887323943662,
+        "other_false_positive_rate": 0.025
+      }
+    },
+    "iphone_test_at_iphone_threshold": {
+      "threshold": 0.18619999289512634,
+      "tp": 129,
+      "fp": 25,
+      "fn": 13,
+      "tn": 333,
+      "precision": 0.8376623376623377,
+      "recall": 0.9084507042253521,
+      "other_false_positive_rate": 0.08214285714285714,
+      "screenshot_accuracy": 0.8846153846153846
+    },
+    "iphone_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 92,
+      "fp": 9,
+      "fn": 50,
+      "tn": 349,
+      "precision": 0.9108910891089109,
+      "recall": 0.647887323943662,
+      "other_false_positive_rate": 0.025,
+      "screenshot_accuracy": 0.8846153846153846
+    },
+    "android_test_at_android_threshold": {
+      "threshold": 0.8870000243186951,
+      "tp": 10,
+      "fp": 0,
+      "fn": 16,
+      "tn": 302,
+      "precision": 1.0,
+      "recall": 0.38461538461538464,
+      "other_false_positive_rate": 0.0,
+      "screenshot_accuracy": 0.8333333333333334
+    },
+    "android_test_at_combined_threshold": {
+      "threshold": 0.8263999819755554,
+      "tp": 14,
+      "fp": 1,
+      "fn": 12,
+      "tn": 301,
+      "precision": 0.9333333333333333,
+      "recall": 0.5384615384615384,
+      "other_false_positive_rate": 0.003937007874015748,
+      "screenshot_accuracy": 0.8333333333333334
+    },
+    "android_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 19,
+      "fp": 3,
+      "fn": 7,
+      "tn": 299,
+      "precision": 0.8636363636363636,
+      "recall": 0.7307692307692307,
+      "other_false_positive_rate": 0.011811023622047244,
+      "screenshot_accuracy": 0.8333333333333334
+    }
+  },
+  "v21b": {
+    "thresholds": {
+      "iphone_cal": {
+        "threshold": 0.5,
+        "tp": 63,
+        "fp": 3,
+        "fn": 13,
+        "tn": 122,
+        "precision": 0.9545454545454546,
+        "recall": 0.8289473684210527,
+        "other_false_positive_rate": 0.03409090909090909
+      },
+      "android_cal": {
+        "threshold": 0.9466999769210815,
+        "tp": 3,
+        "fp": 0,
+        "fn": 4,
+        "tn": 119,
+        "precision": 1.0,
+        "recall": 0.42857142857142855,
+        "other_false_positive_rate": 0.0
+      },
+      "combined_cal": {
+        "threshold": 0.916100025177002,
+        "tp": 38,
+        "fp": 2,
+        "fn": 45,
+        "tn": 242,
+        "precision": 0.95,
+        "recall": 0.4578313253012048,
+        "other_false_positive_rate": 0.010416666666666666
+      },
+      "app_0.65": {
+        "threshold": 0.65,
+        "tp": 125,
+        "fp": 13,
+        "fn": 17,
+        "tn": 345,
+        "precision": 0.9057971014492754,
+        "recall": 0.8802816901408451,
+        "other_false_positive_rate": 0.039285714285714285
+      }
+    },
+    "iphone_test_at_iphone_threshold": {
+      "threshold": 0.5,
+      "tp": 130,
+      "fp": 22,
+      "fn": 12,
+      "tn": 336,
+      "precision": 0.8552631578947368,
+      "recall": 0.9154929577464789,
+      "other_false_positive_rate": 0.06785714285714285,
+      "screenshot_accuracy": 0.8717948717948718
+    },
+    "iphone_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 125,
+      "fp": 13,
+      "fn": 17,
+      "tn": 345,
+      "precision": 0.9057971014492754,
+      "recall": 0.8802816901408451,
+      "other_false_positive_rate": 0.039285714285714285,
+      "screenshot_accuracy": 0.8717948717948718
+    },
+    "android_test_at_android_threshold": {
+      "threshold": 0.9466999769210815,
+      "tp": 2,
+      "fp": 0,
+      "fn": 24,
+      "tn": 302,
+      "precision": 1.0,
+      "recall": 0.07692307692307693,
+      "other_false_positive_rate": 0.0,
+      "screenshot_accuracy": 0.7708333333333334
+    },
+    "android_test_at_combined_threshold": {
+      "threshold": 0.916100025177002,
+      "tp": 13,
+      "fp": 2,
+      "fn": 13,
+      "tn": 300,
+      "precision": 0.8666666666666667,
+      "recall": 0.5,
+      "other_false_positive_rate": 0.007874015748031496,
+      "screenshot_accuracy": 0.7708333333333334
+    },
+    "android_test_at_0.65": {
+      "threshold": 0.65,
+      "tp": 23,
+      "fp": 16,
+      "fn": 3,
+      "tn": 286,
+      "precision": 0.5897435897435898,
+      "recall": 0.8846153846153846,
+      "other_false_positive_rate": 0.06299212598425197,
+      "screenshot_accuracy": 0.7708333333333334
+    }
+  }
+}

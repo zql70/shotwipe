@@ -1,0 +1,42 @@
+# --- OS / IDE ---
+Thumbs.db
+Desktop.ini
+.DS_Store
+.idea/
+.vscode/
+*.iml
+
+# --- Flutter / Dart ---
+**/.dart_tool/
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/.packages
+**/.pub-cache/
+build/
+
+# --- Android（SDK 路径本机相关 / 构建缓存 / 签名）---
+app/android/.gradle/
+app/android/.kotlin/
+app/android/local.properties
+app/android/**/cxx/
+*.keystore
+*.jks
+key.properties
+
+# --- iOS（Flutter 生成的临时文件与用户数据）---
+app/ios/Flutter/Generated.xcconfig
+app/ios/Flutter/flutter_export_environment.sh
+app/ios/Flutter/App.framework/
+app/ios/Flutter/ephemeral/
+app/ios/.symlinks/
+**/xcuserdata/
+*.xcuserstate
+app/ios/Pods/
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+
+# --- ML 数据策略 ---
+# 个人相册、复核标签、缓存与第三方权重一律不入库，细则见 ml/.gitignore。
+# 仅回补自训模型产物（v2 ONNX / v2、v2.1 checkpoint / 汇总指标）作为备份。
