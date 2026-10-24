@@ -9,6 +9,8 @@ eval/data/
 eval/*.csv
 eval/*.json
 eval/*.jpg
+eval/*.png
+eval/*.sqlite
 tinyclip_*/
 tinyclip_repo/
 tflite_*/
