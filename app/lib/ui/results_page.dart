@@ -262,43 +262,6 @@ class _ResultsPageState extends State<ResultsPage>
     }
   }
 
-  Future<void> _showItemActions(_Item item) async {
-    final action = await showModalBottomSheet<String>(
-      context: context,
-      builder: (context) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text('这张不是${item.categoryLabel}？'),
-              subtitle: Text(
-                '${item.isMetadata ? '系统元数据识别' : '端上模型识别'} · 置信度 ${item.confidencePercent}%',
-              ),
-            ),
-            const Divider(height: 1),
-            ListTile(
-              leading: const Icon(Icons.block_outlined),
-              title: Text('不是${item.categoryLabel}'),
-              subtitle: const Text('移出列表并记录纠错，以后不再推荐'),
-              onTap: () => Navigator.pop(context, 'correct'),
-            ),
-            ListTile(
-              leading: const Icon(Icons.bookmark_border),
-              title: const Text('保留这张'),
-              subtitle: const Text('移出列表，以后不再推荐'),
-              onTap: () => Navigator.pop(context, 'keep'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (action == 'correct') {
-      await _correct(item);
-    } else if (action == 'keep') {
-      await _keep(item);
-    }
-  }
-
   Future<void> _correct(_Item item) async {
     await widget.db.recordCorrection(
       row: item.row,
@@ -331,13 +294,19 @@ class _ResultsPageState extends State<ResultsPage>
     _updateSize();
   }
 
+  /// 长按任意图片：大图预览 + 来源说明 + 纠错/保留/勾选操作。
   Future<void> _openPreview(_Item item) async {
+    final title = item.row.category == RecognitionConfig.categoryScreenshot
+        ? '截图'
+        : item.isConfirmed
+        ? '屏摄图'
+        : '疑似屏摄图';
     final action = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         title: Row(
           children: [
-            const Expanded(child: Text('疑似屏摄图')),
+            Expanded(child: Text(title)),
             Text(
               '${item.confidencePercent}%',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -346,34 +315,46 @@ class _ResultsPageState extends State<ResultsPage>
             ),
           ],
         ),
-        content: SizedBox(
-          width: 260,
-          height: 260,
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: FutureBuilder<Uint8List?>(
-              future: item.entity.thumbnailDataWithSize(
-                const ThumbnailSize(1024, 1024),
-                quality: 90,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 260,
+              height: 260,
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: FutureBuilder<Uint8List?>(
+                  future: item.entity.thumbnailDataWithSize(
+                    const ThumbnailSize(1024, 1024),
+                    quality: 90,
+                  ),
+                  builder: (context, snapshot) {
+                    final data = snapshot.data;
+                    if (data == null) {
+                      return const ColoredBox(color: Color(0xFFE0E0E0));
+                    }
+                    return Image.memory(data, fit: BoxFit.contain);
+                  },
+                ),
               ),
-              builder: (context, snapshot) {
-                final data = snapshot.data;
-                if (data == null) {
-                  return const ColoredBox(color: Color(0xFFE0E0E0));
-                }
-                return Image.memory(data, fit: BoxFit.contain);
-              },
             ),
-          ),
+            const SizedBox(height: 8),
+            Text(
+              item.isMetadata ? '系统元数据识别' : '端上模型识别',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('关闭'),
+            onPressed: () => Navigator.pop(context, 'keep'),
+            child: const Text('保留这张'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, 'correct'),
-            child: const Text('这不是屏摄图'),
+            child: Text('不是${item.categoryLabel}'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, 'select'),
@@ -386,6 +367,8 @@ class _ResultsPageState extends State<ResultsPage>
       _toggle(item);
     } else if (action == 'correct') {
       await _correct(item);
+    } else if (action == 'keep') {
+      await _keep(item);
     }
   }
 
@@ -595,8 +578,9 @@ class _ResultsPageState extends State<ResultsPage>
   Widget _tile(_Item item) {
     final selected = _selected.contains(item.id);
     return GestureDetector(
-      onTap: () => item.isConfirmed ? _toggle(item) : _openPreview(item),
-      onLongPress: () => _showItemActions(item),
+      // 点按一律勾选/取消；长按看大图（含纠错/保留）。
+      onTap: () => _toggle(item),
+      onLongPress: () => _openPreview(item),
       child: Stack(
         fit: StackFit.expand,
         children: [

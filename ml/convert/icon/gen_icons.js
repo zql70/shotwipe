@@ -19,12 +19,17 @@ const svg = fs.readFileSync(SRC, 'utf8');
 const inner = svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>[\s\S]*$/, '');
 const INNER = inner; // defs + 主体形状
 
+// 全出血图标：主体缩到 ~54% 画布宽（bbox 100 → 84），居中于 (76,76)
+const FULL_SCALE = 0.84;
+const ftx = 76 - 77 * FULL_SCALE;
+const fty = 76 - 70 * FULL_SCALE;
 const fullSvg = (px) =>
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 152 152" width="${px}" height="${px}">` +
-  `<rect width="152" height="152" fill="${BG}"/>${INNER}</svg>`;
+  `<rect width="152" height="152" fill="${BG}"/>` +
+  `<g transform="translate(${ftx.toFixed(2)} ${fty.toFixed(2)}) scale(${FULL_SCALE})">${INNER}</g></svg>`;
 
-// 自适应前景：主体 62% 居中（中心 77,70 → 平移到 54,54）
-const FG_SCALE = 0.62;
+// 自适应前景：主体 ~55 units（安全区 66 内留呼吸），中心 77,70 → 平移到 54,54
+const FG_SCALE = 0.55;
 const tx = 54 - 77 * FG_SCALE;
 const ty = 54 - 70 * FG_SCALE;
 const fgSvg = (px) =>
