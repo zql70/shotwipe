@@ -23,6 +23,18 @@ class _Item {
   final ScannedAsset row;
   final AssetEntity entity;
 
+  /// 缩略图/预览图的 Future 只创建一次并缓存。
+  /// FutureBuilder 若在每次 rebuild 时拿到新 Future，会先回到等待态
+  /// （灰底占位）再恢复图片——点选/切选项时整个网格就会闪一下。
+  late final Future<Uint8List?> thumbnail = entity.thumbnailDataWithSize(
+    const ThumbnailSize.square(256),
+    quality: 85,
+  );
+  late final Future<Uint8List?> preview = entity.thumbnailDataWithSize(
+    const ThumbnailSize(1280, 1280),
+    quality: 92,
+  );
+
   String get id => row.platformId;
   bool get isMetadata => row.source == RecognitionConfig.sourceMetadata;
   bool get isConfirmed => RecognitionConfig.isConfirmed(
@@ -343,10 +355,7 @@ class _ResultsPageState extends State<ResultsPage>
                       maxHeight: MediaQuery.of(context).size.height * 0.5,
                     ),
                     child: FutureBuilder<Uint8List?>(
-                      future: item.entity.thumbnailDataWithSize(
-                        const ThumbnailSize(1280, 1280),
-                        quality: 92,
-                      ),
+                      future: item.preview,
                       builder: (context, snapshot) {
                         final data = snapshot.data;
                         if (data == null) {
@@ -682,10 +691,7 @@ class _ResultsPageState extends State<ResultsPage>
         fit: StackFit.expand,
         children: [
           FutureBuilder<Uint8List?>(
-            future: item.entity.thumbnailDataWithSize(
-              const ThumbnailSize.square(256),
-              quality: 85,
-            ),
+            future: item.thumbnail,
             builder: (context, snapshot) {
               final data = snapshot.data;
               if (data == null) {
