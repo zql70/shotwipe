@@ -57,7 +57,8 @@ class _HomePageState extends State<HomePage> {
             (r) =>
                 r.state == RecognitionConfig.stateScanned &&
                 r.category == RecognitionConfig.categoryScreenPhoto &&
-                r.source == RecognitionConfig.sourceModel,
+                r.source == RecognitionConfig.sourceModel &&
+                r.confidence >= RecognitionConfig.suspiciousThreshold,
           )
           .length;
     });
@@ -123,6 +124,16 @@ class _HomePageState extends State<HomePage> {
     } finally {
       if (mounted) setState(() => _scanning = false);
     }
+  }
+
+  Future<void> _viewResults() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ResultsPage(db: widget.db, repo: widget.repo),
+      ),
+    );
+    await _refreshCounts();
   }
 
   void _showSnack(String message) {
@@ -196,6 +207,14 @@ class _HomePageState extends State<HomePage> {
           icon: const Icon(Icons.search),
           label: Text(actionable > 0 ? '重新扫描' : '开始扫描'),
         ),
+        if (actionable > 0) ...[
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _viewResults,
+            icon: const Icon(Icons.photo_library_outlined),
+            label: Text('查看上次扫描结果（$actionable 张）'),
+          ),
+        ],
         if (_error != null) ...[
           const SizedBox(height: 16),
           Text(

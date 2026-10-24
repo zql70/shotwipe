@@ -6,7 +6,6 @@ import 'package:photo_manager/photo_manager.dart';
 import '../core/recognition_config.dart';
 import '../data/app_database.dart';
 import '../data/media_repository.dart';
-import '../domain/protect_rules.dart';
 
 class ResultsPage extends StatefulWidget {
   const ResultsPage({super.key, required this.db, required this.repo});
@@ -53,7 +52,6 @@ class _ResultsPageState extends State<ResultsPage>
   List<_Item> _suspects = [];
   final _selected = <String>{};
   final _sizeCache = <String, int>{};
-  int _selectedBytes = 0;
   bool _loading = true;
   late final TabController _tabController;
   int _lastTabIndex = 0;
@@ -62,8 +60,6 @@ class _ResultsPageState extends State<ResultsPage>
 
   int get _actionableCount =>
       _screenshots.length + _candidates.length + _suspects.length;
-
-  List<_Item> get _allItems => [..._screenshots, ..._candidates, ..._suspects];
 
   @override
   void initState() {
@@ -83,7 +79,10 @@ class _ResultsPageState extends State<ResultsPage>
   void _onTabChanged() {
     if (_tabController.index == _lastTabIndex) return;
     _lastTabIndex = _tabController.index;
-    if (mounted) setState(() {});
+    if (mounted) {
+      setState(() {});
+      _updateSize();
+    }
   }
 
   Future<void> _load() async {
@@ -130,12 +129,8 @@ class _ResultsPageState extends State<ResultsPage>
     candidates.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
     suspects.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
 
-    final now = DateTime.now();
-    for (final item in screenshots) {
-      if (ProtectRules.shouldAutoSelect(item.row, item.entity, now)) {
-        _selected.add(item.id);
-      }
-    }
+    // 不做任何默认勾选：勾选和全选都由用户主动完成（包括截图）。
+    _selected.clear();
 
     if (!mounted) return;
     setState(() {
@@ -147,29 +142,27 @@ class _ResultsPageState extends State<ResultsPage>
     _updateSize();
   }
 
+  /// 当前 Tab 的选中项：底栏统计与删除都只作用于当前 Tab。
+  List<_Item> get _tabSelected =>
+      _tabItems.where((i) => _selected.contains(i.id)).toList();
+
+  int get _tabSelectedBytes => _tabSelected.fold(
+    0,
+    (sum, i) => sum + (_sizeCache[i.id] ?? 0),
+  );
+
   Future<void> _updateSize() async {
-    var total = 0;
-    for (final id in _selected) {
-      var size = _sizeCache[id];
-      if (size == null) {
-        AssetEntity? entity;
-        for (final item in _allItems) {
-          if (item.id == id) {
-            entity = item.entity;
-            break;
-          }
-        }
-        if (entity == null) continue;
-        try {
-          size = await entity.fileSize;
-        } catch (_) {
-          size = 0;
-        }
-        _sizeCache[id] = size;
+    final pending = _tabSelected
+        .where((i) => !_sizeCache.containsKey(i.id))
+        .toList();
+    for (final item in pending) {
+      try {
+        _sizeCache[item.id] = await item.entity.fileSize;
+      } catch (_) {
+        _sizeCache[item.id] = 0;
       }
-      total += size;
     }
-    if (mounted) setState(() => _selectedBytes = total);
+    if (pending.isNotEmpty && mounted) setState(() {});
   }
 
   void _toggle(_Item item) {
@@ -195,7 +188,7 @@ class _ResultsPageState extends State<ResultsPage>
   }
 
   // 全选作用于当前 Tab（截图/屏摄图/疑似）。这是用户的显式操作，
-  // 允许批量勾选模型结果；加载时的自动勾选仍仅限系统元数据截图。
+  // 允许批量勾选模型结果；页面加载时不做任何默认勾选。
   void _toggleSelectAll() {
     final items = _tabItems;
     final allSelected = _allTabSelected;
@@ -222,7 +215,7 @@ class _ResultsPageState extends State<ResultsPage>
   }
 
   Future<void> _deleteSelected() async {
-    final targets = _allItems.where((i) => _selected.contains(i.id)).toList();
+    final targets = _tabSelected;
     if (targets.isEmpty) return;
 
     try {
@@ -430,7 +423,7 @@ class _ResultsPageState extends State<ResultsPage>
                 _buildSuspectsTab(),
               ],
             ),
-      bottomNavigationBar: _selected.isEmpty
+      bottomNavigationBar: _tabSelected.isEmpty
           ? null
           : SafeArea(
               child: Padding(
@@ -439,7 +432,7 @@ class _ResultsPageState extends State<ResultsPage>
                   onPressed: _deleteSelected,
                   icon: const Icon(Icons.delete_outline),
                   label: Text(
-                    '删除所选 ${_selected.length} 张 · 约 ${_formatBytes(_selectedBytes)}',
+                    '删除所选 ${_tabSelected.length} 张 · 约 ${_formatBytes(_tabSelectedBytes)}',
                   ),
                 ),
               ),
@@ -456,8 +449,8 @@ class _ResultsPageState extends State<ResultsPage>
       emptyText: '没有待清理的截图 🎉',
       title: '确定',
       subtitle: selectedCount > 0
-          ? '系统截图已按保护规则自动勾选 $selectedCount 张'
-          : '最近 7 天或收藏的截图不会自动勾选',
+          ? '已勾选 $selectedCount 张'
+          : '系统元数据识别，点按勾选或右上角全选',
       color: Theme.of(context).colorScheme.primary,
     );
   }
