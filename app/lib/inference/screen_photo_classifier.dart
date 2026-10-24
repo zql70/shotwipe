@@ -13,15 +13,10 @@ import '../core/recognition_config.dart';
 
 /// 一次模型推理的产物。
 class Classification {
-  const Classification({
-    required this.category,
-    required this.confidence,
-    required this.scores,
-  });
+  const Classification({required this.category, required this.confidence});
 
   final String category;
   final double confidence;
-  final Map<String, double> scores;
 
   @override
   String toString() =>
@@ -53,6 +48,7 @@ class ScreenPhotoClassifier {
   ReceivePort? _errorPort;
   SendPort? _workerPort;
   Completer<void>? _initCompleter;
+  Timer? _initTimer;
   final _pending = <int, Completer<Classification>>{};
   int _nextId = 1;
   bool _ready = false;
@@ -103,7 +99,7 @@ class ScreenPhotoClassifier {
         onError: errorPort.sendPort,
       );
       receive.listen(_onWorkerMessage);
-      Timer(const Duration(seconds: 60), () {
+      _initTimer = Timer(const Duration(seconds: 60), () {
         if (!completer.isCompleted) {
           _failAll(ClassifierException('识别模型加载超时，请重试'));
         }
@@ -214,6 +210,8 @@ class ScreenPhotoClassifier {
       case 'ready':
         _workerPort = message['port'] as SendPort?;
         _ready = true;
+        _initTimer?.cancel();
+        _initTimer = null;
         final init = _initCompleter;
         if (init != null && !init.isCompleted) init.complete();
       case 'init_error':
@@ -229,9 +227,6 @@ class ScreenPhotoClassifier {
           Classification(
             category: message['category'] as String,
             confidence: (message['confidence'] as num).toDouble(),
-            scores: (message['scores'] as Map).map(
-              (k, v) => MapEntry(k as String, (v as num).toDouble()),
-            ),
           ),
         );
       case 'error':
@@ -253,6 +248,8 @@ class ScreenPhotoClassifier {
   void _failAll(Object error) {
     _ready = false;
     _workerPort = null;
+    _initTimer?.cancel();
+    _initTimer = null;
     final init = _initCompleter;
     if (init != null && !init.isCompleted) init.completeError(error);
     _initCompleter = null;
@@ -384,30 +381,23 @@ Map<String, Object> _classify(Float32List logits) {
     if (value > maxLogit) maxLogit = value;
   }
   var sum = 0.0;
-  final probabilities = <String, double>{};
   const categories = [
     RecognitionConfig.categoryScreenshot,
     RecognitionConfig.categoryScreenPhoto,
     RecognitionConfig.categoryOther,
   ];
-  for (var i = 0; i < categories.length; i++) {
-    final e = math.exp(logits[i] - maxLogit);
-    probabilities[categories[i]] = e;
+  final exps = [for (final logit in logits) math.exp(logit - maxLogit)];
+  for (final e in exps) {
     sum += e;
   }
-  var bestCategory = RecognitionConfig.categoryOther;
+  var bestIndex = 0;
   var bestProb = -1.0;
-  for (final entry in probabilities.entries) {
-    final p = entry.value / sum;
-    probabilities[entry.key] = p;
+  for (var i = 0; i < exps.length; i++) {
+    final p = exps[i] / sum;
     if (p > bestProb) {
       bestProb = p;
-      bestCategory = entry.key;
+      bestIndex = i;
     }
   }
-  return {
-    'category': bestCategory,
-    'confidence': bestProb,
-    'scores': probabilities,
-  };
+  return {'category': categories[bestIndex], 'confidence': bestProb};
 }

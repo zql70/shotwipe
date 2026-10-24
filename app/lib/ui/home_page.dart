@@ -112,13 +112,7 @@ class _HomePageState extends State<HomePage> {
         _showSnack('没有发现可清理的截图或屏摄图');
         return;
       }
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => ResultsPage(db: widget.db, repo: widget.repo),
-        ),
-      );
-      await _refreshCounts();
+      await _viewResults();
     } catch (e) {
       if (mounted) setState(() => _error = '扫描失败：$e');
     } finally {

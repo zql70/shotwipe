@@ -1,8 +1,9 @@
 /// 识别管线的共享常量：类别、来源、置信度阈值、模型版本。
 ///
-/// 阈值：≥0.55 确定（默认勾选）、0.35–0.55 疑似（默认不勾）、<0.35 忽略，
-/// 由 TinyCLIP 40M/32 在本地样本集上校准。模型或 prompt 变更时递增
-/// [modelVersion]，扫描会自动重跑模型。
+/// 屏摄图分级：≥0.65 模型候选（屏摄图 Tab）、0.35–0.65 疑似（疑似 Tab）、
+/// <0.35 不展示；阈值在 golden v1 calibration 上校准。
+/// 模型或输入预处理变化时递增 [modelVersion]（触发重扫）；
+/// 仅模型文件变化时递增 [modelAssetVersion]（决定缓存文件名）。
 class RecognitionConfig {
   RecognitionConfig._();
 
@@ -43,7 +44,4 @@ class RecognitionConfig {
     required String source,
     required double confidence,
   }) => source == sourceMetadata || confidence >= confirmedThreshold;
-
-  static bool isSuspicious(double confidence) =>
-      confidence >= suspiciousThreshold && confidence < confirmedThreshold;
 }

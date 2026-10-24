@@ -53,7 +53,7 @@ class MediaRepository {
         .any((segment) => androidAlbumNames.contains(segment));
   }
 
-  /// 512px 缩略图，供模型推理（再中心裁剪到 256）。失败返回 null。
+  /// 512px 缩略图，供模型推理（isolate 内中心裁剪并缩放到 224）。失败返回 null。
   Future<Uint8List?> thumbnail(AssetEntity asset, {int size = 512}) async {
     try {
       return await asset.thumbnailDataWithSize(
