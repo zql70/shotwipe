@@ -46,34 +46,57 @@ class _MonthGroup {
   final List<_Item> items;
 }
 
-class _ResultsPageState extends State<ResultsPage> {
+class _ResultsPageState extends State<ResultsPage>
+    with SingleTickerProviderStateMixin {
   List<_Item> _screenshots = [];
-  List<_Item> _screenPhotos = [];
+  List<_Item> _candidates = [];
+  List<_Item> _suspects = [];
   final _selected = <String>{};
   final _sizeCache = <String, int>{};
   int _selectedBytes = 0;
   bool _loading = true;
+  late final TabController _tabController;
+  int _lastTabIndex = 0;
 
-  int get _actionableCount => _screenshots.length + _screenPhotos.length;
+  static const _tabNames = ['截图', '屏摄图', '疑似'];
 
-  List<_Item> get _allItems => [..._screenshots, ..._screenPhotos];
+  int get _actionableCount =>
+      _screenshots.length + _candidates.length + _suspects.length;
+
+  List<_Item> get _allItems => [..._screenshots, ..._candidates, ..._suspects];
 
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    _tabController.removeListener(_onTabChanged);
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == _lastTabIndex) return;
+    _lastTabIndex = _tabController.index;
+    if (mounted) setState(() {});
   }
 
   Future<void> _load() async {
     final rows = await widget.db.activeRows();
     final screenshots = <_Item>[];
-    final screenPhotos = <_Item>[];
+    final candidates = <_Item>[];
+    final suspects = <_Item>[];
     final missing = <String>[];
 
     for (final row in rows) {
       if (!RecognitionConfig.isActionableCategory(row.category)) continue;
       // 模型判出的「截图」不可信（实测会把山景/普通照片当成截图），
-      // 截图 Tab 只展示系统元数据命中；屏幕类结果只在屏摄 Tab 展示。
+      // 截图 Tab 只展示系统元数据命中；屏幕类结果只在屏摄/疑似 Tab 展示。
       if (row.category == RecognitionConfig.categoryScreenshot &&
           row.source != RecognitionConfig.sourceMetadata) {
         continue;
@@ -94,20 +117,22 @@ class _ResultsPageState extends State<ResultsPage> {
       final item = _Item(row, entity);
       if (row.category == RecognitionConfig.categoryScreenshot) {
         screenshots.add(item);
+      } else if (item.isConfirmed) {
+        candidates.add(item);
       } else {
-        screenPhotos.add(item);
+        suspects.add(item);
       }
     }
     if (missing.isNotEmpty) {
       await widget.db.markState(missing, RecognitionConfig.stateDeleted);
     }
     screenshots.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
-    screenPhotos.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
+    candidates.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
+    suspects.sort((a, b) => b.row.takenAtMs.compareTo(a.row.takenAtMs));
 
     final now = DateTime.now();
-    for (final item in [...screenshots, ...screenPhotos]) {
-      if (item.isConfirmed &&
-          ProtectRules.shouldAutoSelect(item.row, item.entity, now)) {
+    for (final item in screenshots) {
+      if (ProtectRules.shouldAutoSelect(item.row, item.entity, now)) {
         _selected.add(item.id);
       }
     }
@@ -115,7 +140,8 @@ class _ResultsPageState extends State<ResultsPage> {
     if (!mounted) return;
     setState(() {
       _screenshots = screenshots;
-      _screenPhotos = screenPhotos;
+      _candidates = candidates;
+      _suspects = suspects;
       _loading = false;
     });
     _updateSize();
@@ -157,14 +183,24 @@ class _ResultsPageState extends State<ResultsPage> {
     _updateSize();
   }
 
+  List<_Item> get _tabItems => switch (_tabController.index) {
+    0 => _screenshots,
+    1 => _candidates,
+    _ => _suspects,
+  };
+
+  bool get _allTabSelected {
+    final items = _tabItems;
+    return items.isNotEmpty && items.every((i) => _selected.contains(i.id));
+  }
+
+  // 全选作用于当前 Tab（截图/屏摄图/疑似）。这是用户的显式操作，
+  // 允许批量勾选模型结果；加载时的自动勾选仍仅限系统元数据截图。
   void _toggleSelectAll() {
-    // 只批量选择系统元数据截图；模型结果必须逐张人工确认。
-    final selectable = _autoSelectableItems;
-    final allSelected =
-        selectable.isNotEmpty &&
-        selectable.every((i) => _selected.contains(i.id));
+    final items = _tabItems;
+    final allSelected = _allTabSelected;
     setState(() {
-      for (final item in selectable) {
+      for (final item in items) {
         if (allSelected) {
           _selected.remove(item.id);
         } else {
@@ -189,31 +225,9 @@ class _ResultsPageState extends State<ResultsPage> {
     final targets = _allItems.where((i) => _selected.contains(i.id)).toList();
     if (targets.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('删除所选照片？'),
-        content: Text(
-          '共 ${targets.length} 张 · 约 ${_formatBytes(_selectedBytes)}。\n'
-          '下一步会弹出系统确认框。\n'
-          '删除后照片会进入系统「最近删除」/回收站（通常保留 30 天），'
-          '需要彻底释放空间时请到系统相册里清空。',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('取消'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('删除 ${targets.length} 张'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-
     try {
+      // 只保留系统删除确认弹窗（Android createDeleteRequest / iOS 系统删除），
+      // App 内不再加一层确认。
       final deletedIds = await widget.repo.delete(
         targets.map((i) => i.entity).toList(),
       );
@@ -317,7 +331,8 @@ class _ResultsPageState extends State<ResultsPage> {
     if (ids.isEmpty) return;
     setState(() {
       _screenshots.removeWhere((i) => ids.contains(i.id));
-      _screenPhotos.removeWhere((i) => ids.contains(i.id));
+      _candidates.removeWhere((i) => ids.contains(i.id));
+      _suspects.removeWhere((i) => ids.contains(i.id));
       _selected.removeAll(ids);
     });
     _updateSize();
@@ -383,68 +398,102 @@ class _ResultsPageState extends State<ResultsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('待清理'),
-          actions: [
-            TextButton(
-              onPressed:
-                  _loading || _autoSelectableItems.isEmpty ? null : _toggleSelectAll,
-              child: Text(_allAutoSelectableSelected ? '取消全选' : '全选截图'),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('待清理'),
+        actions: [
+          TextButton(
+            onPressed: _loading || _tabItems.isEmpty ? null : _toggleSelectAll,
+            child: Text(
+              _allTabSelected
+                  ? '取消全选'
+                  : '全选${_tabNames[_tabController.index]}',
             ),
-          ],
-          bottom: TabBar(
-            tabs: [
-              Tab(text: '截图 ${_screenshots.length}'),
-              Tab(text: '屏摄图 ${_screenPhotos.length}'),
-            ],
           ),
+        ],
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: [
+            Tab(text: '截图 ${_screenshots.length}'),
+            Tab(text: '屏摄图 ${_candidates.length}'),
+            Tab(text: '疑似 ${_suspects.length}'),
+          ],
         ),
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : TabBarView(
-                children: [
-                  _buildTab(
-                    _screenshots,
-                    category: RecognitionConfig.categoryScreenshot,
-                  ),
-                  _buildTab(
-                    _screenPhotos,
-                    category: RecognitionConfig.categoryScreenPhoto,
-                  ),
-                ],
-              ),
-        bottomNavigationBar: _selected.isEmpty
-            ? null
-            : SafeArea(
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: FilledButton.icon(
-                    onPressed: _deleteSelected,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(
-                      '删除所选 ${_selected.length} 张 · 约 ${_formatBytes(_selectedBytes)}',
-                    ),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : TabBarView(
+              controller: _tabController,
+              children: [
+                _buildScreenshotsTab(),
+                _buildCandidatesTab(),
+                _buildSuspectsTab(),
+              ],
+            ),
+      bottomNavigationBar: _selected.isEmpty
+          ? null
+          : SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: FilledButton.icon(
+                  onPressed: _deleteSelected,
+                  icon: const Icon(Icons.delete_outline),
+                  label: Text(
+                    '删除所选 ${_selected.length} 张 · 约 ${_formatBytes(_selectedBytes)}',
                   ),
                 ),
               ),
-      ),
+            ),
     );
   }
 
-  List<_Item> get _autoSelectableItems => _allItems
-      .where((i) => i.row.source == RecognitionConfig.sourceMetadata)
-      .toList();
-
-  bool get _allAutoSelectableSelected {
-    final selectable = _autoSelectableItems;
-    return selectable.isNotEmpty &&
-        selectable.every((i) => _selected.contains(i.id));
+  Widget _buildScreenshotsTab() {
+    final selectedCount = _screenshots
+        .where((i) => _selected.contains(i.id))
+        .length;
+    return _buildTab(
+      items: _screenshots,
+      emptyText: '没有待清理的截图 🎉',
+      title: '确定',
+      subtitle: selectedCount > 0
+          ? '系统截图已按保护规则自动勾选 $selectedCount 张'
+          : '最近 7 天或收藏的截图不会自动勾选',
+      color: Theme.of(context).colorScheme.primary,
+    );
   }
 
-  Widget _buildTab(List<_Item> items, {required String category}) {
+  Widget _buildCandidatesTab() {
+    final selectedCount = _candidates
+        .where((i) => _selected.contains(i.id))
+        .length;
+    return _buildTab(
+      items: _candidates,
+      emptyText: '没有发现屏摄图 🎉',
+      title: '模型候选',
+      subtitle: selectedCount > 0
+          ? '已勾选 $selectedCount 张，请确认无误'
+          : '模型结果默认不勾选，请逐张确认后再删除',
+      color: Theme.of(context).colorScheme.primary,
+    );
+  }
+
+  Widget _buildSuspectsTab() {
+    return _buildTab(
+      items: _suspects,
+      emptyText: '没有疑似屏摄图 🎉',
+      title: '疑似',
+      subtitle: '默认不勾选，点按查看大图后再决定',
+      color: Theme.of(context).colorScheme.tertiary,
+    );
+  }
+
+  Widget _buildTab({
+    required List<_Item> items,
+    required String emptyText,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
     if (items.isEmpty) {
       return Center(
         child: Column(
@@ -452,45 +501,14 @@ class _ResultsPageState extends State<ResultsPage> {
           children: [
             const Icon(Icons.check_circle_outline, size: 56),
             const SizedBox(height: 12),
-            Text(
-              category == RecognitionConfig.categoryScreenshot
-                  ? '没有待清理的截图 🎉'
-                  : '没有发现屏摄图 🎉',
-            ),
+            Text(emptyText),
           ],
         ),
       );
     }
-    final confirmed = items.where((i) => i.isConfirmed).toList();
-    final suspicious = items.where((i) => !i.isConfirmed).toList();
-    final isScreenshotTab =
-        category == RecognitionConfig.categoryScreenshot;
-    final selectedCount =
-        confirmed.where((i) => _selected.contains(i.id)).length;
-    final confirmedTitle = isScreenshotTab ? '确定' : '模型候选';
-    final confirmedSubtitle = isScreenshotTab
-        ? (selectedCount > 0
-            ? '系统截图已按保护规则自动勾选 $selectedCount 张'
-            : '最近 7 天或收藏的截图不会自动勾选')
-        : (selectedCount > 0
-            ? '已手动勾选 $selectedCount 张，请确认无误'
-            : '模型结果默认不勾选，请逐张确认后再删除');
     return CustomScrollView(
       slivers: [
-        if (confirmed.isNotEmpty)
-          ..._buildTier(
-            title: confirmedTitle,
-            subtitle: confirmedSubtitle,
-            items: confirmed,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        if (suspicious.isNotEmpty)
-          ..._buildTier(
-            title: '疑似',
-            subtitle: '默认不勾选，点按查看大图后再决定',
-            items: suspicious,
-            color: Theme.of(context).colorScheme.tertiary,
-          ),
+        ..._buildTier(title: title, subtitle: subtitle, items: items, color: color),
         const SliverToBoxAdapter(child: SizedBox(height: 24)),
       ],
     );

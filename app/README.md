@@ -54,7 +54,7 @@ Flutter + photo_manager + drift + tflite_flutter（LiteRT）。
   不自动勾选。
 - **误判纠正**：结果页长按 →「不是屏摄图 / 保留这张」→ 写 `feedback` 表并
   `state=dismissed`，以后不再推荐。
-- **删除**：App 内汇总确认 → 系统确认弹窗 → 完成页提示「最近删除/回收站」30 天。
+- **删除**：直接弹系统确认（App 内无二次确认）→ 完成页提示「最近删除/回收站」30 天。
 
 ## 目录
 
@@ -64,7 +64,7 @@ lib/
   inference/screen_photo_classifier.dart  # TFLite 后台 isolate + 3 分类
   data/                          # photo_manager 封装、drift v2 schema
   domain/                        # 扫描编排、保护规则
-  ui/                            # 首页 / 结果页（双 Tab + 模型候选/疑似）
+  ui/                            # 首页 / 结果页（截图·屏摄·疑似三 Tab）
 assets/models/v2_screen_classifier.tflite  # 2.7MB 生成物
 ```
 
@@ -112,7 +112,7 @@ cd ml
 2. 往 `/sdcard/Pictures/Screenshots/` 推截图（走元数据），
    往 `/sdcard/DCIM/Camera/` 推屏摄图/普通照片（走模型）。
 3. 对每个文件广播 `android.intent.action.MEDIA_SCANNER_SCAN_FILE` 触发入库。
-4. App 内扫描 → 结果页查看双 Tab / 模型候选 / 疑似分组 → 手动勾选删除/长按纠错。
+4. App 内扫描 → 结果页三 Tab（截图/屏摄/疑似，右上角全选按 Tab 作用）→ 勾选删除/长按纠错。
 5. 再次扫描应在数秒内完成（增量跳过已分类资产）。
 
 ## 已知限制
