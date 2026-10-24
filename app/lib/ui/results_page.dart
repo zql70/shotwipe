@@ -369,12 +369,6 @@ class _ResultsPageState extends State<ResultsPage>
                   ),
                 ),
                 const SizedBox(height: 6),
-                Text(
-                  item.isMetadata ? '系统元数据识别' : '端上模型识别',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
                 const Divider(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -439,7 +433,8 @@ class _ResultsPageState extends State<ResultsPage>
     }
   }
 
-  /// 预览弹窗里的三选项：选中时用主色色块包裹，未选中为文字按钮。
+  /// 预览弹窗选项：选中与未选中使用同一几何（同一 TextButton），
+  /// 只切换底色/前景色，避免按钮大小或位置跳动。
   Widget _previewOption(
     BuildContext context, {
     required String label,
@@ -448,15 +443,15 @@ class _ResultsPageState extends State<ResultsPage>
     required ValueChanged<String> onSelected,
   }) {
     final selected = value == groupValue;
-    return selected
-        ? FilledButton(
-            onPressed: () => onSelected(value),
-            child: Text(label),
-          )
-        : TextButton(
-            onPressed: () => onSelected(value),
-            child: Text(label),
-          );
+    final scheme = Theme.of(context).colorScheme;
+    return TextButton(
+      onPressed: () => onSelected(value),
+      style: TextButton.styleFrom(
+        backgroundColor: selected ? scheme.primary : null,
+        foregroundColor: selected ? scheme.onPrimary : scheme.primary,
+      ),
+      child: Text(label),
+    );
   }
 
   @override
@@ -526,16 +521,11 @@ class _ResultsPageState extends State<ResultsPage>
   }
 
   Widget _buildCandidatesTab() {
-    final selectedCount = _candidates
-        .where((i) => _selected.contains(i.id))
-        .length;
     return _buildTab(
       items: _candidates,
       emptyText: '没有发现屏摄图 🎉',
       title: '模型候选',
-      subtitle: selectedCount > 0
-          ? '已勾选 $selectedCount 张，请确认无误'
-          : '模型结果默认不勾选，请逐张确认后再删除',
+      subtitle: '点击勾选，长按可预览大图，请逐张确认后再删除',
       color: Theme.of(context).colorScheme.primary,
     );
   }
@@ -545,7 +535,7 @@ class _ResultsPageState extends State<ResultsPage>
       items: _suspects,
       emptyText: '没有疑似屏摄图 🎉',
       title: '疑似',
-      subtitle: '默认不勾选，点按查看大图后再决定',
+      subtitle: '点击勾选，长按可预览大图，请逐张确认后再删除',
       color: Theme.of(context).colorScheme.tertiary,
     );
   }
