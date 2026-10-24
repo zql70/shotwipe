@@ -37,6 +37,9 @@ app/ios/Pods/
 __pycache__/
 *.py[cod]
 
+# --- Node（图标生成用 sharp）---
+node_modules/
+
 # --- ML 数据策略 ---
 # 个人相册、复核标签、缓存与第三方权重一律不入库，细则见 ml/.gitignore。
 # 仅回补自训模型产物（v2 ONNX / v2、v2.1 checkpoint / 汇总指标）作为备份。

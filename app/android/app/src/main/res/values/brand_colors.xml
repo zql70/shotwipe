@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 品牌色：清洁薄荷绿 #8BFFE0（点缀）/ 深海蓝 #10263C（图标与启动页底色） -->
+    <color name="ic_launcher_background">#10263C</color>
+</resources>

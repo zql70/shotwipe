@@ -45,6 +45,9 @@ Flutter + photo_manager + drift + tflite_flutter（LiteRT）。
 
 ## 实现要点
 
+- **品牌色**：主色深海蓝 #10263C、点缀薄荷绿 #8BFFE0（图标/主题/启动页统一；
+  生成脚本 `ml/convert/icon/gen_icons.js`，源 SVG 本地保存不入库）。
+
 - **扫描**：一次遍历全图库（新→旧），分批写库。
   - 系统元数据命中 → 截图，置信度 1.0（iOS subtype / Android RELATIVE_PATH）。
   - 其余图片 → 512px 缩略图 → 后台 isolate 跑 MobileNetV4 → 三类概率。
