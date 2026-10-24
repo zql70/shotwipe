@@ -295,6 +295,7 @@ class _ResultsPageState extends State<ResultsPage>
   }
 
   /// 长按任意图片：大图预览 + 来源说明 + 纠错/保留/勾选操作。
+  /// 按钮固定一行（FittedBox 兜底缩放），预览图最大占屏高一半。
   Future<void> _openPreview(_Item item) async {
     final title = item.row.category == RecognitionConfig.categoryScreenshot
         ? '截图'
@@ -303,64 +304,87 @@ class _ResultsPageState extends State<ResultsPage>
         : '疑似屏摄图';
     final action = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Expanded(child: Text(title)),
-            Text(
-              '${item.confidencePercent}%',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.tertiary,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 260,
-              height: 260,
-              child: AspectRatio(
-                aspectRatio: 1,
-                child: FutureBuilder<Uint8List?>(
-                  future: item.entity.thumbnailDataWithSize(
-                    const ThumbnailSize(1024, 1024),
-                    quality: 90,
+      builder: (context) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge,
+                    ),
                   ),
-                  builder: (context, snapshot) {
-                    final data = snapshot.data;
-                    if (data == null) {
-                      return const ColoredBox(color: Color(0xFFE0E0E0));
-                    }
-                    return Image.memory(data, fit: BoxFit.contain);
-                  },
+                  Text(
+                    '${item.confidencePercent}%',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.tertiary,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.52,
+                  ),
+                  child: FutureBuilder<Uint8List?>(
+                    future: item.entity.thumbnailDataWithSize(
+                      const ThumbnailSize(1280, 1280),
+                      quality: 92,
+                    ),
+                    builder: (context, snapshot) {
+                      final data = snapshot.data;
+                      if (data == null) {
+                        return const AspectRatio(
+                          aspectRatio: 1,
+                          child: ColoredBox(color: Color(0xFFE0E0E0)),
+                        );
+                      }
+                      return Image.memory(data, fit: BoxFit.contain);
+                    },
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.isMetadata ? '系统元数据识别' : '端上模型识别',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              const SizedBox(height: 6),
+              Text(
+                item.isMetadata ? '系统元数据识别' : '端上模型识别',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
-            ),
-          ],
+              const Divider(height: 20),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, 'keep'),
+                      child: const Text('保留这张'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, 'correct'),
+                      child: Text('不是${item.categoryLabel}'),
+                    ),
+                    FilledButton(
+                      onPressed: () => Navigator.pop(context, 'select'),
+                      child: Text(
+                        _selected.contains(item.id) ? '取消选择' : '选入清理',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'keep'),
-            child: const Text('保留这张'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, 'correct'),
-            child: Text('不是${item.categoryLabel}'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, 'select'),
-            child: Text(_selected.contains(item.id) ? '取消选择' : '选入清理'),
-          ),
-        ],
       ),
     );
     if (action == 'select') {
