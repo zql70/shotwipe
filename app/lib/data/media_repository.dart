@@ -17,10 +17,20 @@ class MediaRepository {
   static const iosScreenshotSubtypeBit = 4;
   static const _pageSize = 500;
 
-  Future<bool> ensurePermission() async {
-    final state = await PhotoManager.requestPermissionExtend();
-    return state.hasAccess;
-  }
+  /// 弹窗申请权限（已授权时直接返回状态）。返回完整状态，
+  /// 供 UI 判断「部分授权」（limited：Android 14+ 仅所选照片 / iOS Limited）。
+  Future<PermissionState> ensurePermission() =>
+      PhotoManager.requestPermissionExtend();
+
+  /// 当前授权状态（不弹窗），用于启动时判断部分授权模式。
+  Future<PermissionState> permissionState() => PhotoManager.getPermissionState(
+    requestOption: const PermissionRequestOption(
+      androidPermission: AndroidPermission(
+        type: RequestType.image,
+        mediaLocation: false,
+      ),
+    ),
+  );
 
   Future<AssetEntity?> loadAsset(String id) => AssetEntity.fromId(id);
 

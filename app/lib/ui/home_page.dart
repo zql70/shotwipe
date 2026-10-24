@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../core/recognition_config.dart';
 import '../data/app_database.dart';
@@ -32,11 +33,24 @@ class _HomePageState extends State<HomePage> {
   int _classified = 0;
   String _phase = '';
   String? _error;
+  bool _limited = false;
 
   @override
   void initState() {
     super.initState();
     _refreshCounts();
+    _checkPermission();
+  }
+
+  /// 启动时静默检查是否处于部分授权模式（不弹权限窗）。
+  Future<void> _checkPermission() async {
+    try {
+      final state = await widget.repo.permissionState();
+      if (!mounted) return;
+      setState(() => _limited = state == PermissionState.limited);
+    } catch (_) {
+      // 拿不到状态就当作完全授权，扫描时会再校验。
+    }
   }
 
   Future<void> _refreshCounts() async {
@@ -74,11 +88,12 @@ class _HomePageState extends State<HomePage> {
       _error = null;
     });
     try {
-      final ok = await widget.repo.ensurePermission();
-      if (!ok) {
+      final permission = await widget.repo.ensurePermission();
+      if (!permission.hasAccess) {
         setState(() => _error = '需要照片「完全访问」权限才能扫描');
         return;
       }
+      setState(() => _limited = permission == PermissionState.limited);
       final summary = await widget.scanner.scan(
         onProgress: (p) {
           if (!mounted) return;
@@ -192,6 +207,36 @@ class _HomePageState extends State<HomePage> {
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        if (_limited) ...[
+          const SizedBox(height: 16),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.secondaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.info_outline,
+                  size: 18,
+                  color: theme.colorScheme.onSecondaryContainer,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '部分授权模式：仅能识别你选择的照片。要扫描整个图库，请到系统设置开启「完全访问」权限。',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSecondaryContainer,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],

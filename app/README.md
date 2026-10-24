@@ -53,6 +53,8 @@ Flutter + photo_manager + drift + tflite_flutter（LiteRT）。
   - 其余图片 → 512px 缩略图 → 后台 isolate 跑 MobileNetV4 → 三类概率。
   - 已按当前 `modelVersion` 分类过的资产直接跳过，实现增量扫描。
 - **截图 Tab 只展示元数据命中**：模型判出的 screenshot 不可靠，结果只入库不展示。
+- **部分授权提示**：Android 14+/iOS Limited 模式下首页显示提示条，说明仅
+  识别所选照片（PhotoManager.getPermissionState 静默检查）。
 - **无默认勾选**：扫描后不自动选中任何照片（含截图）；全选按钮和底部删除栏
   都只作用于当前 Tab（截图 / 屏摄图 / 疑似）。
 - **点按/长按**：点按一律勾选或取消（薄荷绿圆底打勾角标）；长按查看大图，
