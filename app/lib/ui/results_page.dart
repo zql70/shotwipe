@@ -306,14 +306,13 @@ class _ResultsPageState extends State<ResultsPage>
     _updateSize();
   }
 
-  /// 长按任意图片：大图预览 + 三选项（左/中/右分布，点选高亮）+ 确认生效。
+  /// 长按任意图片：大图预览 + 保留/纠错两选项（点选高亮）+ 右侧确认生效。
   Future<void> _openPreview(_Item item) async {
     final title = item.row.category == RecognitionConfig.categoryScreenshot
         ? '截图'
         : item.isConfirmed
         ? '屏摄图'
         : '疑似屏摄图';
-    final cleanLabel = _selected.contains(item.id) ? '取消选中' : '选中清理';
     const keepDesc = '移出列表，以后不再推荐';
     final correctDesc = '移出列表并记录纠错，帮助模型改进';
     String? choice;
@@ -406,18 +405,11 @@ class _ResultsPageState extends State<ResultsPage>
                         ),
                       ),
                     ),
-                    Flexible(
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: _previewOption(
-                          context,
-                          label: cleanLabel,
-                          value: 'select',
-                          groupValue: choice,
-                          onSelected: (v) =>
-                              setDialogState(() => choice = v),
-                        ),
-                      ),
+                    FilledButton(
+                      onPressed: choice == null
+                          ? null
+                          : () => Navigator.pop(context, choice),
+                      child: const Text('确认'),
                     ),
                   ],
                 ),
@@ -434,24 +426,13 @@ class _ResultsPageState extends State<ResultsPage>
                     ),
                   ),
                 ),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    onPressed: choice == null
-                        ? null
-                        : () => Navigator.pop(context, choice),
-                    child: const Text('确认'),
-                  ),
-                ),
               ],
             ),
           ),
         ),
       ),
     );
-    if (action == 'select') {
-      _toggle(item);
-    } else if (action == 'correct') {
+    if (action == 'correct') {
       await _correct(item);
     } else if (action == 'keep') {
       await _keep(item);
@@ -704,7 +685,17 @@ class _ResultsPageState extends State<ResultsPage>
             const DecoratedBox(
               decoration: BoxDecoration(color: Color(0x66000000)),
               child: Center(
-                child: Icon(Icons.check_circle, color: Colors.white),
+                child: SizedBox(
+                  width: 30,
+                  height: 30,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Color(0xFF8BFFE0),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(Icons.check, size: 22, color: Color(0xFF10263C)),
+                  ),
+                ),
               ),
             ),
           if (!item.isConfirmed)

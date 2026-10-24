@@ -31,19 +31,17 @@ class ShotWipeApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ShotWipe',
-      // 品牌色（与 App 图标一致）：主色深海蓝 #10263C，
-      // 点缀薄荷绿——浅色模式用加深版保证对比度，深色模式用原色 #8BFFE0。
+      // 品牌色试验中：以薄荷绿 #8BFFE0 为种子生成整套配色；
+      // 选中角标等处仍直接使用 #8BFFE0 / #10263C 品牌常量。
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF10263C),
-        ).copyWith(tertiary: const Color(0xFF0FA98A)),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8BFFE0)),
         useMaterial3: true,
       ),
       darkTheme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF10263C),
+          seedColor: const Color(0xFF8BFFE0),
           brightness: Brightness.dark,
-        ).copyWith(tertiary: const Color(0xFF8BFFE0)),
+        ),
         useMaterial3: true,
       ),
       home: HomePage(db: db, repo: repo, scanner: scanner),
