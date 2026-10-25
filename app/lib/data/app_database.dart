@@ -52,7 +52,9 @@ class Feedback extends Table {
 
 @DriftDatabase(tables: [ScannedAssets, ScanState, Feedback])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(driftDatabase(name: 'shotwipe'));
+  /// [executor] 仅测试注入内存库用；生产路径走默认的本地文件库。
+  AppDatabase([QueryExecutor? executor])
+    : super(executor ?? driftDatabase(name: 'shotwipe'));
 
   @override
   int get schemaVersion => 2;

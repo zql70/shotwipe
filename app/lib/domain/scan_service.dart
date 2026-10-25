@@ -42,6 +42,25 @@ class ScanSummary {
   bool get hasModelError => modelError != null;
 }
 
+/// 元数据截图是否需要（重）写库：新资产，或 scanned 状态但还不是元数据截图行
+/// （例如旧模型版本把它写成了别的类别，本次应归位）。
+/// kept/dismissed/deleted 等用户已决策的状态不动。
+bool needsScreenshotWrite(ScannedAsset? row) {
+  if (row == null) return true;
+  return row.state == RecognitionConfig.stateScanned &&
+      (row.category != RecognitionConfig.categoryScreenshot ||
+          row.source != RecognitionConfig.sourceMetadata);
+}
+
+/// 该资产是否需要跑模型：新资产；或 scanned 状态下模型版本过期 / 类别未知。
+/// 用户已决策的状态（kept/dismissed/deleted）永不重跑，增量续扫即依赖此规则。
+bool needsModelInference(ScannedAsset? row, String modelVersion) {
+  if (row == null) return true;
+  if (row.state != RecognitionConfig.stateScanned) return false;
+  return row.modelVersion != modelVersion ||
+      row.category == RecognitionConfig.categoryUnknown;
+}
+
 /// 扫描服务：一次遍历全图库。
 ///
 /// 1. 系统元数据命中 → 截图（零成本、置信度 1.0）；
@@ -104,12 +123,7 @@ class ScanService {
       final metadataShot = _repo.isScreenshotMetadata(asset);
 
       if (metadataShot) {
-        final needsWrite =
-            row == null ||
-            (row.state == RecognitionConfig.stateScanned &&
-                (row.category != RecognitionConfig.categoryScreenshot ||
-                    row.source != RecognitionConfig.sourceMetadata));
-        if (needsWrite) {
+        if (needsScreenshotWrite(row)) {
           batch.add(
             ScannedAssetsCompanion.insert(
               platformId: asset.id,
@@ -127,12 +141,10 @@ class ScanService {
           screenshots++;
         }
       } else {
-        final needsInference =
-            row == null ||
-            (row.state == RecognitionConfig.stateScanned &&
-                row.modelVersion != RecognitionConfig.modelVersion) ||
-            (row.state == RecognitionConfig.stateScanned &&
-                row.category == RecognitionConfig.categoryUnknown);
+        final needsInference = needsModelInference(
+          row,
+          RecognitionConfig.modelVersion,
+        );
         if (needsInference && !_modelDisabled) {
           if (!_classifier.isReady) {
             onProgress?.call(

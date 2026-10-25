@@ -6,6 +6,7 @@ import 'package:photo_manager/photo_manager.dart';
 import '../core/recognition_config.dart';
 import '../data/app_database.dart';
 import '../data/media_repository.dart';
+import '../domain/results_grouper.dart';
 
 class ResultsPage extends StatefulWidget {
   const ResultsPage({super.key, required this.db, required this.repo});
@@ -105,33 +106,24 @@ class _ResultsPageState extends State<ResultsPage>
     final missing = <String>[];
 
     for (final row in rows) {
-      if (!RecognitionConfig.isActionableCategory(row.category)) continue;
-      // 模型判出的「截图」不可信（实测会把山景/普通照片当成截图），
-      // 截图 Tab 只展示系统元数据命中；屏幕类结果只在屏摄/疑似 Tab 展示。
-      if (row.category == RecognitionConfig.categoryScreenshot &&
-          row.source != RecognitionConfig.sourceMetadata) {
-        continue;
-      }
-      if (row.category == RecognitionConfig.categoryScreenPhoto &&
-          row.source != RecognitionConfig.sourceModel) {
-        continue;
-      }
-      if (row.source != RecognitionConfig.sourceMetadata &&
-          row.confidence < RecognitionConfig.suspiciousThreshold) {
-        continue;
-      }
+      // 分桶规则见 domain/results_grouper.dart（模型截图不展示、<0.35 过滤等）。
+      final bucket = resultBucket(row);
+      if (bucket == ResultBucket.hidden) continue;
       final entity = await widget.repo.loadAsset(row.platformId);
       if (entity == null) {
         missing.add(row.platformId);
         continue;
       }
       final item = _Item(row, entity);
-      if (row.category == RecognitionConfig.categoryScreenshot) {
-        screenshots.add(item);
-      } else if (item.isConfirmed) {
-        candidates.add(item);
-      } else {
-        suspects.add(item);
+      switch (bucket) {
+        case ResultBucket.screenshot:
+          screenshots.add(item);
+        case ResultBucket.candidate:
+          candidates.add(item);
+        case ResultBucket.suspect:
+          suspects.add(item);
+        case ResultBucket.hidden:
+          break;
       }
     }
     if (missing.isNotEmpty) {
