@@ -1,0 +1,66 @@
+# Uncomment this line to define a global platform for your project
+# platform :ios, '15.0'
+
+# CocoaPods analytics sends network stats synchronously affecting flutter build latency.
+ENV['COCOAPODS_DISABLE_STATS'] = 'true'
+
+project 'Runner', {
+  'Debug' => :debug,
+  'Profile' => :release,
+  'Release' => :release,
+}
+
+def flutter_root
+  generated_xcode_build_settings_path = File.expand_path(File.join('..', 'Flutter', 'Generated.xcconfig'), __FILE__)
+  unless File.exist?(generated_xcode_build_settings_path)
+    raise "#{generated_xcode_build_settings_path} must exist. If you're running pod install manually, make sure flutter pub get is executed first"
+  end
+
+  File.foreach(generated_xcode_build_settings_path) do |line|
+    matches = line.match(/FLUTTER_ROOT\=(.*)/)
+    return matches[1].strip if matches
+  end
+  raise "FLUTTER_ROOT not found in #{generated_xcode_build_settings_path}. Try deleting Generated.xcconfig, then run flutter pub get"
+end
+
+require File.expand_path(File.join('packages', 'flutter_tools', 'bin', 'podhelper'), flutter_root)
+
+flutter_ios_podfile_setup
+
+target 'Runner' do
+  use_frameworks!
+
+  flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
+  target 'RunnerTests' do
+    inherit! :search_paths
+  end
+end
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    flutter_additional_ios_build_settings(target)
+  end
+  # tflite_flutter 走 Dart FFI（运行期查进程符号），TF 运行时是静态库且编译期零引用，
+  # 需 -force_load 强制保留全部符号。
+  # 模型由新版转换器导出（FULLY_CONNECTED v12 等新算子），tflite_flutter 0.12.1 自带的
+  # TensorFlowLiteC 2.12 运行时建解释器失败（"Unable to create interpreter"），
+  # 故改用 LiteRT v2.3.0 的同名 TensorFlowLiteC（C API 兼容，已实测该模型可建解释器）。
+  # 注意：整值替换 OTHER_LDFLAGS（不 $(inherited)），去掉 pods 的 -framework "TensorFlowLite*"——
+  # 旧 pod 静态包含同一份 C 符号，与 force_load 叠加会 154 duplicate symbols。
+  tf_litert = '${PROJECT_DIR}/ThirdParty/TensorFlowLiteC.xcframework'
+  installer.aggregate_targets.first.user_project.native_targets
+        .select { |t| t.name == 'Runner' }.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings.delete('OTHER_LDFLAGS[sdk=iphoneos*]')
+      config.build_settings.delete('OTHER_LDFLAGS[sdk=iphonesimulator*]')
+      config.build_settings['DEVELOPMENT_TEAM'] = 'U7G7C7YF3J'
+      # FFI 符号运行期才查找、编译期零引用，必须同时关掉死代码剥离，
+      # 否则 force_load 进来的符号会被 -dead_strip 再删一遍。
+      config.build_settings['DEAD_CODE_STRIPPING'] = 'NO'
+      config.build_settings['TF_LITERT_LIB[sdk=iphoneos*]'] = "#{tf_litert}/ios-arm64/TensorFlowLiteC.framework/TensorFlowLiteC"
+      config.build_settings['TF_LITERT_LIB[sdk=iphonesimulator*]'] = "#{tf_litert}/ios-arm64-simulator/TensorFlowLiteC.framework/TensorFlowLiteC"
+      config.build_settings['OTHER_LDFLAGS'] = "-ObjC -l\"c++\" -weak_framework CoreML -weak_framework Metal -force_load ${TF_LITERT_LIB}"
+    end
+    target.project.save
+  end
+end
