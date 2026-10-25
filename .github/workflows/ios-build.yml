@@ -1,0 +1,42 @@
+name: iOS Build Verification
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    # GitHub 托管的 arm64 macOS runner，自带可用 Xcode（本机 Intel + Xcode 27 无法构建 iOS）
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.8 # 与本地开发版本一致
+
+      - name: Resolve dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Test
+        run: flutter test
+
+      - name: Build iOS (no codesign)
+        run: flutter build ios --release --no-codesign
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: RunnerApp-release
+          path: app/build/ios/iphoneos/Runner.app
+          retention-days: 7
